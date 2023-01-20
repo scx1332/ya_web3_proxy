@@ -28,6 +28,7 @@ actix-cors = "0.6.4"
 actix-files = "0.6.2"
 serde_json = { version = "^1.0.85" }
 uuid = { version = "1.2.2", features = ["serde", "v4"] }
+awc = { version = "3.0.1", features = ["rustls"] }
 
 
 [dependencies]
@@ -53,3 +54,4 @@ actix-cors = { workspace = true }
 actix-files = { workspace = true }
 uuid = { workspace = true }
 serde_json = { workspace = true }
+awc = { workspace = true }
