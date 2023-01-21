@@ -5,16 +5,14 @@ extern crate core;
 use crate::error::Web3ProxyError;
 use actix_web::http::StatusCode;
 use actix_web::web::{Bytes, Data};
-use actix_web::{
-    web, App, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer, Responder, Scope,
-};
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder, Scope};
 use serde::Serialize;
 use serde_json::json;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 use structopt::StructOpt;
-use tokio::net::windows::named_pipe::PipeEnd::Client;
+
 use tokio::sync::Mutex;
 
 #[derive(Debug, StructOpt, Clone)]
@@ -92,7 +90,7 @@ pub async fn get_calls(req: HttpRequest, server_data: Data<Box<ServerData>>) -> 
         .unwrap();
     let key_data = {
         let mut shared_data = server_data.shared_data.lock().await;
-        let mut key_data = shared_data
+        let key_data = shared_data
             .keys
             .get_mut(key)
             .ok_or("Key not found - something went really wrong, beacue it should be here")
@@ -121,7 +119,7 @@ pub async fn web3(
     // Obtain lock and check conditions if we should call the function.
     {
         let mut shared_data = server_data.shared_data.lock().await;
-        let mut key_data = shared_data.keys.get_mut(key);
+        let key_data = shared_data.keys.get_mut(key);
 
         if let Some(key_data) = key_data {
             key_data.value = "test".to_string();
@@ -147,11 +145,11 @@ pub async fn web3(
     log::debug!("res: {:?}", res);
 
     let mut response_body_str = None;
-    let statusCode = match res {
+    let status_code = match res {
         Ok(mut cr) => {
             let body_res = cr.body().await;
-            match (body_res) {
-                Ok(body) => match (String::from_utf8(body.to_vec())) {
+            match body_res {
+                Ok(body) => match String::from_utf8(body.to_vec()) {
                     Ok(body_str) => {
                         response_body_str = Some(body_str);
                         cr.status()
@@ -188,9 +186,9 @@ pub async fn web3(
         });
     }
     if let Some(response_body_str) = response_body_str {
-        HttpResponse::build(statusCode).body(response_body_str)
+        HttpResponse::build(status_code).body(response_body_str)
     } else {
-        HttpResponse::build(statusCode).finish()
+        HttpResponse::build(status_code).finish()
     }
 }
 
