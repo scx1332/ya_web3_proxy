@@ -2,20 +2,20 @@ mod error;
 
 extern crate core;
 
-use std::collections::HashMap;
-use actix_web::{web, App, HttpRequest, HttpServer, Responder, Scope, HttpResponse, HttpResponseBuilder};
-use serde_json::json;
-use std::fmt::Debug;
-use std::sync::Arc;
+use crate::error::Web3ProxyError;
 use actix_web::http::StatusCode;
 use actix_web::web::{Bytes, Data};
+use actix_web::{
+    web, App, HttpRequest, HttpResponse, HttpResponseBuilder, HttpServer, Responder, Scope,
+};
 use serde::Serialize;
+use serde_json::json;
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::net::windows::named_pipe::PipeEnd::Client;
 use tokio::sync::Mutex;
-use crate::error::Web3ProxyError;
-
-
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CliOptions {
@@ -56,7 +56,6 @@ macro_rules! return_on_error {
     }
 }
 
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CallInfo {
@@ -77,7 +76,7 @@ pub struct KeyData {
 }
 
 pub struct SharedData {
-    pub keys: HashMap<String, KeyData>
+    pub keys: HashMap<String, KeyData>,
 }
 
 pub struct ServerData {
@@ -85,27 +84,37 @@ pub struct ServerData {
     pub shared_data: Arc<Mutex<SharedData>>,
 }
 
-
 pub async fn get_calls(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
-    let key = req.match_info().get("key").ok_or("No key provided").unwrap();
+    let key = req
+        .match_info()
+        .get("key")
+        .ok_or("No key provided")
+        .unwrap();
     let key_data = {
         let mut shared_data = server_data.shared_data.lock().await;
-        let mut key_data = shared_data.keys.get_mut(key).ok_or("Key not found - something went really wrong, beacue it should be here").unwrap();
+        let mut key_data = shared_data
+            .keys
+            .get_mut(key)
+            .ok_or("Key not found - something went really wrong, beacue it should be here")
+            .unwrap();
         key_data.clone()
     };
-    web::Json(json!({
-        "key_data": key_data
-    }))
-
+    web::Json(json!({ "key_data": key_data }))
 }
 
-
-pub async fn web3(req: HttpRequest, body: Bytes, server_data: Data<Box<ServerData>>) -> impl Responder {
-    let key = req.match_info().get("key").ok_or("No key provided").unwrap();
+pub async fn web3(
+    req: HttpRequest,
+    body: Bytes,
+    server_data: Data<Box<ServerData>>,
+) -> impl Responder {
+    let key = req
+        .match_info()
+        .get("key")
+        .ok_or("No key provided")
+        .unwrap();
 
     let body_str = String::from_utf8(body.to_vec()).unwrap();
     let body_json: serde_json::Value = serde_json::from_str(&body_str).unwrap();
-
 
     println!("key: {}, body: {:?}", key, body_str);
     // Before call check.
@@ -131,7 +140,10 @@ pub async fn web3(req: HttpRequest, body: Bytes, server_data: Data<Box<ServerDat
     //do the long call here
 
     let client = awc::Client::new();
-    let res = client.post("https://bor.golem.network").send_json(&body_json).await;
+    let res = client
+        .post("https://bor.golem.network")
+        .send_json(&body_json)
+        .await;
     log::debug!("res: {:?}", res);
 
     let mut response_body_str = None;
@@ -139,24 +151,22 @@ pub async fn web3(req: HttpRequest, body: Bytes, server_data: Data<Box<ServerDat
         Ok(mut cr) => {
             let body_res = cr.body().await;
             match (body_res) {
-                Ok(body) => {
-                    match(String::from_utf8(body.to_vec())) {
-                        Ok(body_str) => {
-                            response_body_str = Some(body_str);
-                            cr.status()
-                        },
-                        Err(err) => {
-                            log::error!("Error getting body: {:?}", err);
-                            StatusCode::from_u16(500).unwrap()
-                        }
+                Ok(body) => match (String::from_utf8(body.to_vec())) {
+                    Ok(body_str) => {
+                        response_body_str = Some(body_str);
+                        cr.status()
                     }
-                }
+                    Err(err) => {
+                        log::error!("Error getting body: {:?}", err);
+                        StatusCode::from_u16(500).unwrap()
+                    }
+                },
                 Err(e) => {
                     log::error!("Error getting body: {:?}", e);
                     StatusCode::from_u16(500).unwrap()
                 }
             }
-        },
+        }
         Err(err) => {
             log::error!("Error: {}", err);
             StatusCode::from_u16(500).unwrap()
@@ -165,7 +175,11 @@ pub async fn web3(req: HttpRequest, body: Bytes, server_data: Data<Box<ServerDat
     //After call update info
     {
         let mut shared_data = server_data.shared_data.lock().await;
-        let mut key_data = shared_data.keys.get_mut(key).ok_or("Key not found - something went really wrong, beacue it should be here").unwrap();
+        let mut key_data = shared_data
+            .keys
+            .get_mut(key)
+            .ok_or("Key not found - something went really wrong, beacue it should be here")
+            .unwrap();
         key_data.total_calls += 1;
         key_data.calls.push(CallInfo {
             id: 1,
@@ -196,9 +210,9 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
     env_logger::init();
     let cli: CliOptions = CliOptions::from_args();
 
-    let server_data = Data::new(Box::new(ServerData{
+    let server_data = Data::new(Box::new(ServerData {
         options: cli.clone(),
-        shared_data: Arc::new(Mutex::new(SharedData{
+        shared_data: Arc::new(Mutex::new(SharedData {
             keys: HashMap::new(),
         })),
     }));
@@ -216,7 +230,8 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
             .route("/calls/{key}", web::get().to(get_calls))
             .route("/version", web::get().to(greet));
 
-        App::new().wrap(cors)
+        App::new()
+            .wrap(cors)
             .app_data(server_data.clone())
             .route("web3/{key}", web::get().to(web3))
             .route("web3/{key}", web::post().to(web3))
@@ -229,7 +244,11 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
     .expect("Cannot run server")
     .run();
 
-    log::info!("http server starting on {}:{}", cli.http_addr, cli.http_port);
+    log::info!(
+        "http server starting on {}:{}",
+        cli.http_addr,
+        cli.http_port
+    );
 
     server.await.unwrap();
 
