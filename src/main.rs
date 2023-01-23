@@ -44,6 +44,13 @@ pub struct CliOptions {
     pub http_addr: String,
 
     #[structopt(
+    long = "target-addr",
+    help = "Target address of the server",
+    default_value = "http://polygongas.org:8545"
+    )]
+    pub target_addr: String,
+
+    #[structopt(
         long = "queue-size",
         help = "How many historical requests to keep",
         default_value = "10000"
@@ -249,7 +256,7 @@ pub async fn web3(
 
     let client = awc::Client::new();
     let res = client
-        .post("http://polygongas.org:8545")
+        .post(&server_data.options.target_addr)
         .send_json(&body_json)
         .await;
     log::debug!("res: {:?}", res);
