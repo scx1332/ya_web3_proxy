@@ -1,9 +1,7 @@
 use super::{CustomError, TransactionFailedError};
-use crate::error::allowance::AllowanceRequest;
 use rustc_hex::FromHexError;
 use std::fmt::Display;
 use std::num::ParseIntError;
-use web3::ethabi::ethereum_types::FromDecStrErr;
 
 /// Enum containing all possible errors used in the library
 /// Probably you can use thiserror crate to simplify this process
@@ -13,11 +11,7 @@ pub enum ErrorBag {
     IoError(std::io::Error),
     CustomError(CustomError),
     TransactionFailedError(TransactionFailedError),
-    EthAbiError(web3::ethabi::Error),
-    Web3Error(web3::Error),
     FromHexError(FromHexError),
-    NoAllowanceFound(AllowanceRequest),
-    FromDecStrErr(FromDecStrErr),
 }
 
 impl Display for ErrorBag {
@@ -29,11 +23,7 @@ impl Display for ErrorBag {
             ErrorBag::TransactionFailedError(transaction_failed_error) => {
                 write!(f, "{}", transaction_failed_error)
             }
-            ErrorBag::EthAbiError(eth_abi_error) => write!(f, "{:?}", eth_abi_error),
-            ErrorBag::Web3Error(web3_error) => write!(f, "{:?}", web3_error),
             ErrorBag::FromHexError(from_hex_error) => write!(f, "{:?}", from_hex_error),
-            ErrorBag::NoAllowanceFound(allowance_request) => write!(f, "{:?}", allowance_request),
-            ErrorBag::FromDecStrErr(from_dec_str_err) => write!(f, "{:?}", from_dec_str_err),
         }
     }
 }
@@ -64,32 +54,8 @@ impl From<TransactionFailedError> for ErrorBag {
     }
 }
 
-impl From<web3::ethabi::Error> for ErrorBag {
-    fn from(err: web3::ethabi::Error) -> Self {
-        ErrorBag::EthAbiError(err)
-    }
-}
-
-impl From<web3::Error> for ErrorBag {
-    fn from(err: web3::Error) -> Self {
-        ErrorBag::Web3Error(err)
-    }
-}
-
 impl From<FromHexError> for ErrorBag {
     fn from(err: FromHexError) -> Self {
         ErrorBag::FromHexError(err)
-    }
-}
-
-impl From<AllowanceRequest> for ErrorBag {
-    fn from(err: AllowanceRequest) -> Self {
-        ErrorBag::NoAllowanceFound(err)
-    }
-}
-
-impl From<FromDecStrErr> for ErrorBag {
-    fn from(err: FromDecStrErr) -> Self {
-        ErrorBag::FromDecStrErr(err)
     }
 }
