@@ -7,7 +7,7 @@ use actix_web::http::StatusCode;
 use actix_web::web::{Bytes, Data};
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder, Scope};
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{json, Number};
 use std::cmp::min;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
@@ -17,6 +17,7 @@ use env_logger::Env;
 use structopt::StructOpt;
 
 use tokio::sync::Mutex;
+use uuid::Uuid;
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CliOptions {
@@ -104,6 +105,7 @@ pub struct MethodInfo {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CallInfo {
+    pub id: u64,
     pub request: Option<String>,
     pub response: Option<String>,
 
@@ -290,7 +292,8 @@ pub async fn web3(
     let finish = Instant::now();
     //After call update info
     {
-        let call_info = CallInfo {
+        let mut call_info = CallInfo {
+            id: 0,
             date: call_date,
             request: Some(body_str),
             parsed_request,
@@ -305,6 +308,9 @@ pub async fn web3(
             .ok_or("Key not found - something went really wrong, beacue it should be here"));
         key_data.total_calls += 1;
 
+        if key_data.calls.len() > 0 {
+            call_info.id = key_data.calls.back().unwrap().id + 1;
+        }
         key_data.calls.push_back(call_info);
         if key_data.calls.len() > server_data.options.request_queue_size {
             key_data.calls.pop_front();
