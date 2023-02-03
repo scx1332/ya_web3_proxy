@@ -1,7 +1,20 @@
-[package]
-name = "ya_web3_proxy"
+[workspace.package]
+authors = ["Sieciech Czajka <sieciech.czajka@golem.network>"]
 version = "0.1.1"
 edition = "2021"
+license = "MIT"
+
+[[bin]]
+name = "ya_web3_proxy"
+
+[package]
+name = "ya_web3_proxy"
+description = "Simple proxy for web3 for listing latest web3 traffic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
