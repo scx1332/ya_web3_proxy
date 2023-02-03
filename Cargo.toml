@@ -1,5 +1,5 @@
 [package]
-name = "ya_web_proxy"
+name = "ya_web3_proxy"
 version = "0.1.1"
 edition = "2021"
 
@@ -12,14 +12,14 @@ lazy_static = "1.4.0"
 hex = "0.4.3"
 chrono = { version = "0.4.22", features = ["serde"] }
 log = "0.4.17"
-env_logger = "0.9.1"
+env_logger = "0.10.0"
 rand = "0.8.5"
 rustc-hex = "2.1.0"
 structopt = "0.3.26"
 dotenv = "0.15.0"
 serde = { version = "1.0.147", features = ["derive"] }
 rust_decimal = { version = "1.26.1", features = ["serde-arbitrary-precision"] }
-toml = "0.5.9"
+toml = "0.7.1"
 actix-web = "^4.2.1"
 actix-cors = "0.6.4"
 actix-files = "0.6.2"
