@@ -5,6 +5,7 @@ use std::num::ParseIntError;
 
 /// Enum containing all possible errors used in the library
 /// Probably you can use thiserror crate to simplify this process
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum ErrorBag {
     ParseError(ParseIntError),
@@ -17,13 +18,13 @@ pub enum ErrorBag {
 impl Display for ErrorBag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ErrorBag::ParseError(parse_int_error) => write!(f, "{}", parse_int_error),
-            ErrorBag::IoError(io_error) => write!(f, "{}", io_error),
-            ErrorBag::CustomError(custom_error) => write!(f, "{}", custom_error),
+            ErrorBag::ParseError(parse_int_error) => write!(f, "{parse_int_error}"),
+            ErrorBag::IoError(io_error) => write!(f, "{io_error}"),
+            ErrorBag::CustomError(custom_error) => write!(f, "{custom_error}"),
             ErrorBag::TransactionFailedError(transaction_failed_error) => {
-                write!(f, "{}", transaction_failed_error)
+                write!(f, "{transaction_failed_error}")
             }
-            ErrorBag::FromHexError(from_hex_error) => write!(f, "{:?}", from_hex_error),
+            ErrorBag::FromHexError(from_hex_error) => write!(f, "{from_hex_error:?}"),
         }
     }
 }

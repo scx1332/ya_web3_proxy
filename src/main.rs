@@ -44,9 +44,9 @@ pub struct CliOptions {
     pub http_addr: String,
 
     #[structopt(
-    long = "target-addr",
-    help = "Target address of the server",
-    default_value = "http://polygongas.org:8545"
+        long = "target-addr",
+        help = "Target address of the server",
+        default_value = "http://polygongas.org:8545"
     )]
     pub target_addr: String,
 
@@ -138,7 +138,7 @@ pub fn parse_request(
             params: params.clone(),
         });
     }
-    return Ok(parsed_requests);
+    Ok(parsed_requests)
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -196,7 +196,7 @@ pub async fn get_methods(req: HttpRequest, server_data: Data<Box<ServerData>>) -
 
     let methods = calls
         .iter()
-        .map(|call| {
+        .flat_map(|call| {
             call.parsed_request
                 .iter()
                 .map(|req| MethodInfo {
@@ -207,7 +207,6 @@ pub async fn get_methods(req: HttpRequest, server_data: Data<Box<ServerData>>) -
                 })
                 .collect::<Vec<MethodInfo>>()
         })
-        .flatten()
         .collect::<Vec<MethodInfo>>();
 
     web::Json(json!({ "methods": methods }))
@@ -326,9 +325,16 @@ pub async fn greet(_req: HttpRequest, server_data: Data<Box<ServerData>>) -> imp
     }));
 }
 
+pub async fn config(_req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    web::Json(
+        json!({"config": {"version": VERSION, "request_queue_size": server_data.options.request_queue_size}}),
+    )
+}
+
 async fn main_internal() -> Result<(), Web3ProxyError> {
     if let Err(err) = dotenv::dotenv() {
-        panic!("Error loading .env file: {}", err);
+        panic!("Error loading .env file: {err}");
     }
     env_logger::init();
     let cli: CliOptions = CliOptions::from_args();
@@ -350,6 +356,7 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
         let scope = Scope::new("api")
             .app_data(server_data.clone())
             .route("/", web::get().to(greet))
+            .route("/config", web::get().to(config))
             .route("/calls/{key}", web::get().to(get_calls))
             .route("/calls/{key}/{limit}", web::get().to(get_calls))
             .route("/methods/{key}", web::get().to(get_methods))
@@ -387,7 +394,7 @@ async fn main() -> Result<(), Web3ProxyError> {
     match main_internal().await {
         Ok(_) => Ok(()),
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             Err(e)
         }
     }
