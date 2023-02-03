@@ -1,0 +1,18 @@
+# Sample deployment script for the web3 proxy
+# Can be placed into /etc/systemd/system/ya_web3_proxy.service
+
+[Unit]
+Description=Web3 proxy
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10
+User=ubuntu
+ExecStart=/usr/bin/ya_web3_proxy --target-addr http://127.0.0.1:8545 --http-port 8546 --http-addr 0.0.0.0
+WorkingDirectory=/home/ubuntu/scx1332/ya_web_proxy
+
+[Install]
+WantedBy=multi-user.target
