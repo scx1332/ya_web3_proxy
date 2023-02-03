@@ -13,6 +13,7 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Instant;
+use env_logger::Env;
 use structopt::StructOpt;
 
 use tokio::sync::Mutex;
@@ -336,7 +337,7 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
     if let Err(err) = dotenv::dotenv() {
         panic!("Error loading .env file: {err}");
     }
-    env_logger::init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let cli: CliOptions = CliOptions::from_args();
 
     let server_data = Data::new(Box::new(ServerData {
