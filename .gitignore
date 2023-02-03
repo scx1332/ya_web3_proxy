@@ -1,1 +1,3 @@
 /target
+/.env
+/archive_history.py
