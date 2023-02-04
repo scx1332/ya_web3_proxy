@@ -87,9 +87,18 @@ macro_rules! return_on_error_resp {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ParsedEthCallRequest {
+    pub method: String,
+    pub address: Option<String>,
+}
+
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ParsedRequest {
     pub id: serde_json::Value,
     pub method: String,
+    pub parsed_call: Option<ParsedEthCallRequest>,
     pub params: Vec<serde_json::Value>,
 }
 
@@ -98,6 +107,7 @@ pub struct ParsedRequest {
 pub struct MethodInfo {
     pub id: String,
     pub method: String,
+    pub parsed_call: Option<ParsedEthCallRequest>,
     pub date: chrono::DateTime<chrono::Utc>,
     pub response_time: f64,
 }
@@ -134,10 +144,31 @@ pub fn parse_request(
         let params = parsed_body["params"]
             .as_array()
             .ok_or(err_custom_create!("params field is missing"))?;
+        let mut parsed_call = None;
+        if method == "eth_getBalance" {
+            println!("{:?}", params);
+
+        }
+        if method == "eth_call" {
+            if params.len() >= 1 {
+                if let Some(obj) = params[0].as_object() {
+                    if let Some(data) = obj.get("data").and_then(|x| x.as_str()) {
+                        let data : String = data.to_lowercase();
+                        if (data.len() == 74) && (data.starts_with("0x70a08231")) {
+                            parsed_call = Some(ParsedEthCallRequest {
+                                method: "balanceOf".to_string(),
+                                address: Some(format!("0x{}", data.split_at(34).1)),
+                            });
+                        }
+                    }
+                }
+            }
+        }
 
         parsed_requests.push(ParsedRequest {
             id: rpc_id,
             method: method.to_string(),
+            parsed_call,
             params: params.clone(),
         });
     }
@@ -205,6 +236,7 @@ pub async fn get_methods(req: HttpRequest, server_data: Data<Box<ServerData>>) -
                 .map(|req| MethodInfo {
                     id: req.id.to_string(),
                     method: req.method.clone(),
+                    parsed_call: req.parsed_call.clone(),
                     date: call.date,
                     response_time: call.response_time,
                 })
