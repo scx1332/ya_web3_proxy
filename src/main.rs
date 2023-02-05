@@ -90,6 +90,7 @@ macro_rules! return_on_error_resp {
 pub struct ParsedEthCallRequest {
     pub method: String,
     pub address: Option<String>,
+    pub to: Option<String>,
 }
 
 
@@ -146,16 +147,23 @@ pub fn parse_request(
             .ok_or(err_custom_create!("params field is missing"))?;
         let mut parsed_call = None;
         if method == "eth_getBalance" {
-            println!("{:?}", params);
-
+            if params.len() >= 1 {
+                println!("{:?}", params[0]);
+                parsed_call = Some(ParsedEthCallRequest {
+                    to: None,
+                    method: "get_balance".to_string(),
+                    address: Some(params[0].as_str().unwrap().to_string()),
+                });
+            }
         }
-        if method == "eth_call" {
+        else if method == "eth_call" {
             if params.len() >= 1 {
                 if let Some(obj) = params[0].as_object() {
                     if let Some(data) = obj.get("data").and_then(|x| x.as_str()) {
                         let data : String = data.to_lowercase();
                         if (data.len() == 74) && (data.starts_with("0x70a08231")) {
                             parsed_call = Some(ParsedEthCallRequest {
+                                to: params[0]["to"].as_str().map(|x| x.to_string()),
                                 method: "balanceOf".to_string(),
                                 address: Some(format!("0x{}", data.split_at(34).1)),
                             });
@@ -369,6 +377,18 @@ pub async fn config(_req: HttpRequest, server_data: Data<Box<ServerData>>) -> im
     web::Json(
         json!({"config": {"version": VERSION, "request_queue_size": server_data.options.request_queue_size}}),
     )
+}
+
+pub async fn get_call(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
+    let key = return_on_error_json!(req.match_info().get("key").ok_or("No key provided"));
+    let call_no = return_on_error_json!(req.match_info().get("call_no").ok_or("No call no provided"));
+    let call_no = return_on_error_json!(call_no.parse::<usize>().map_err(|e| format!("Error parsing call no: {}", e)));
+
+
+    //todo implement call no
+    web::Json(json!({
+        "call_no": call_no,
+    }))
 }
 
 async fn main_internal() -> Result<(), Web3ProxyError> {
