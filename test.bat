@@ -1,1 +1,0 @@
-python archive_history.py --target-url http://127.0.0.1:8080/web3/key1

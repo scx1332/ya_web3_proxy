@@ -7,7 +7,7 @@ use actix_web::http::StatusCode;
 use actix_web::web::{Bytes, Data};
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder, Scope};
 use serde::Serialize;
-use serde_json::{json, Number};
+use serde_json::{json};
 use std::cmp::min;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
@@ -17,7 +17,6 @@ use env_logger::Env;
 use structopt::StructOpt;
 
 use tokio::sync::Mutex;
-use uuid::Uuid;
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CliOptions {
@@ -382,12 +381,32 @@ pub async fn config(_req: HttpRequest, server_data: Data<Box<ServerData>>) -> im
 pub async fn get_call(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
     let key = return_on_error_json!(req.match_info().get("key").ok_or("No key provided"));
     let call_no = return_on_error_json!(req.match_info().get("call_no").ok_or("No call no provided"));
-    let call_no = return_on_error_json!(call_no.parse::<usize>().map_err(|e| format!("Error parsing call no: {}", e)));
+    let call_no = return_on_error_json!(call_no.parse::<u64>().map_err(|e| format!("Error parsing call no: {}", e)));
 
+    let call = {
+        let shared_data = server_data.shared_data.lock().await;
+        let key_data = return_on_error_json!(shared_data.keys.get(key).ok_or("Key not found"));
+
+        //this way of extracting call number is good for deque only and it is done in constant time
+        let calls: &VecDeque<CallInfo> = &key_data.calls;
+        if calls.len() == 0 {
+            return web::Json(json!({"error": "No calls found for this key"}));
+        }
+        let first_key_no = calls[0].id;
+        let last_key_no = first_key_no + calls.len() as u64 - 1;
+        if call_no < first_key_no {
+            return web::Json(json!({"error": "Call no not found, probably already deleted"}));
+        }
+        if call_no > last_key_no {
+            return web::Json(json!({"error": "There is no call with this number yet"}));
+        }
+        calls[(call_no - first_key_no) as usize].clone()
+    };
 
     //todo implement call no
     web::Json(json!({
         "call_no": call_no,
+        "call": call
     }))
 }
 
