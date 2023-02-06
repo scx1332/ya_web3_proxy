@@ -6,14 +6,15 @@ use crate::error::*;
 use actix_web::http::StatusCode;
 use actix_web::web::{Bytes, Data};
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder, Scope};
+use env_logger::Env;
+use rand::Rng;
 use serde::Serialize;
-use serde_json::{json};
+use serde_json::json;
 use std::cmp::min;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::sync::Arc;
-use std::time::Instant;
-use env_logger::Env;
+use std::time::{Duration, Instant};
 use structopt::StructOpt;
 
 use tokio::sync::Mutex;
@@ -92,7 +93,6 @@ pub struct ParsedEthCallRequest {
     pub to: Option<String>,
 }
 
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParsedRequest {
@@ -146,27 +146,27 @@ pub fn parse_request(
             .ok_or(err_custom_create!("params field is missing"))?;
         let mut parsed_call = None;
         if method == "eth_getBalance" {
-            if params.len() >= 1 {
-                println!("{:?}", params[0]);
-                parsed_call = Some(ParsedEthCallRequest {
-                    to: None,
-                    method: "get_balance".to_string(),
-                    address: Some(params[0].as_str().unwrap().to_string()),
-                });
+            if params.is_empty() {
+                return Err(err_custom_create!("params field is empty"));
             }
-        }
-        else if method == "eth_call" {
-            if params.len() >= 1 {
-                if let Some(obj) = params[0].as_object() {
-                    if let Some(data) = obj.get("data").and_then(|x| x.as_str()) {
-                        let data : String = data.to_lowercase();
-                        if (data.len() == 74) && (data.starts_with("0x70a08231")) {
-                            parsed_call = Some(ParsedEthCallRequest {
-                                to: params[0]["to"].as_str().map(|x| x.to_string()),
-                                method: "balanceOf".to_string(),
-                                address: Some(format!("0x{}", data.split_at(34).1)),
-                            });
-                        }
+            parsed_call = Some(ParsedEthCallRequest {
+                to: None,
+                method: "get_balance".to_string(),
+                address: Some(params[0].as_str().unwrap().to_string()),
+            });
+        } else if method == "eth_call" {
+            if params.is_empty() {
+                return Err(err_custom_create!("params field is empty"));
+            }
+            if let Some(obj) = params[0].as_object() {
+                if let Some(data) = obj.get("data").and_then(|x| x.as_str()) {
+                    let data: String = data.to_lowercase();
+                    if (data.len() == 74) && (data.starts_with("0x70a08231")) {
+                        parsed_call = Some(ParsedEthCallRequest {
+                            to: params[0]["to"].as_str().map(|x| x.to_string()),
+                            method: "balanceOf".to_string(),
+                            address: Some(format!("0x{}", data.split_at(34).1)),
+                        });
                     }
                 }
             }
@@ -184,6 +184,30 @@ pub fn parse_request(
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct EndpointSimulateProblems {
+    pub timeout_chance: f64,
+    pub error_chance: f64,
+    pub malformed_response_chance: f64,
+    pub skip_sending_raw_transaction_chance: f64,
+    pub allow_only_parsed_calls: bool,
+    pub allow_only_single_calls: bool,
+}
+
+impl Default for EndpointSimulateProblems {
+    fn default() -> Self {
+        Self {
+            timeout_chance: 0.0,
+            error_chance: 0.4,
+            malformed_response_chance: 0.4,
+            skip_sending_raw_transaction_chance: 1.0,
+            allow_only_parsed_calls: true,
+            allow_only_single_calls: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct KeyData {
     pub key: String,
     pub value: String,
@@ -191,6 +215,7 @@ pub struct KeyData {
     pub total_requests: u64,
 
     pub calls: VecDeque<CallInfo>,
+    pub problems: EndpointSimulateProblems,
 }
 
 pub struct SharedData {
@@ -263,22 +288,17 @@ pub async fn web3(
 
     let body_str = return_on_error_resp!(String::from_utf8(body.to_vec()));
     let body_json: serde_json::Value = return_on_error_resp!(serde_json::from_str(&body_str));
-    let parsed_request = parse_request(&body_json).unwrap_or(vec![]);
 
-    log::info!(
-        "key: {}, method: {:?}",
-        key,
-        parsed_request.get(0).map(|x| x.method.clone())
-    );
     // Before call check.
     // Obtain lock and check conditions if we should call the function.
-    {
+    let problems = {
         let mut shared_data = server_data.shared_data.lock().await;
         let key_data = shared_data.keys.get_mut(key);
 
         if let Some(key_data) = key_data {
             key_data.value = "test".to_string();
             key_data.total_requests += 1;
+            key_data.problems.clone()
         } else {
             let key_data = KeyData {
                 key: key.to_string(),
@@ -286,48 +306,118 @@ pub async fn web3(
                 total_calls: 0,
                 total_requests: 0,
                 calls: VecDeque::new(),
+                problems: EndpointSimulateProblems::default(),
             };
             shared_data.keys.insert(key.to_string(), key_data);
+            EndpointSimulateProblems::default()
         }
+    };
+    let parsed_request = match parse_request(&body_json) {
+        Ok(parsed_request) => parsed_request,
+        Err(e) => {
+            log::error!("Error parsing request: {}", e);
+            if problems.allow_only_parsed_calls {
+                return HttpResponse::BadRequest().body(e.to_string());
+            }
+            vec![]
+        }
+    };
+    if parsed_request.len() >= 2 && problems.allow_only_single_calls {
+        return HttpResponse::BadRequest().body("Only single rpc call allowed at once");
     }
+
+    log::info!(
+        "key: {}, method: {:?}",
+        key,
+        parsed_request.get(0).map(|x| x.method.clone())
+    );
+
     //do the long call here
 
     let call_date = chrono::Utc::now();
     let start = Instant::now();
 
-    let client = awc::Client::new();
-    let res = client
-        .post(&server_data.options.target_addr)
-        .send_json(&body_json)
-        .await;
-    log::debug!("res: {:?}", res);
-
+    let mut rng = rand::thread_rng();
     let mut response_body_str = None;
-    let status_code = match res {
-        Ok(mut cr) => {
-            let body_res = cr.body().await;
-            match body_res {
-                Ok(body) => match String::from_utf8(body.to_vec()) {
-                    Ok(body_str) => {
-                        response_body_str = Some(body_str);
-                        cr.status()
-                    }
-                    Err(err) => {
-                        log::error!("Error getting body: {:?}", err);
+
+    let status_code = if problems.error_chance > 0.0
+        && rng.gen_range(0.0..1.0) < problems.error_chance
+    {
+        log::info!("Error chance hit! ({}%)", problems.error_chance * 100.0);
+        StatusCode::INTERNAL_SERVER_ERROR
+    } else if problems.timeout_chance > 0.0 && rng.gen_range(0.0..1.0) < problems.timeout_chance {
+        log::info!("Timeout chance hit! ({}%)", problems.timeout_chance * 100.0);
+        tokio::time::sleep(Duration::from_secs(15)).await;
+        StatusCode::GATEWAY_TIMEOUT
+    } else if parsed_request
+        .get(0)
+        .map(|f| f.method == "eth_sendRawTransaction")
+        .unwrap_or(false)
+        && problems.skip_sending_raw_transaction_chance > 0.0
+        && rng.gen_range(0.0..1.0) < problems.skip_sending_raw_transaction_chance
+    {
+        log::info!(
+            "Skip sending raw transaction chance hit! ({}%)",
+            problems.skip_sending_raw_transaction_chance * 100.0
+        );
+        let random_bytes = rand::thread_rng().gen::<[u8; 32]>();
+
+        let random_hash = format!("0x{}", hex::encode(random_bytes));
+
+        response_body_str = Some(
+            json!({"jsonrpc": "2.0",
+                "id": parsed_request.get(0).unwrap().id,
+                "result": random_hash})
+            .to_string(),
+        );
+        StatusCode::OK
+    } else {
+        let client = awc::Client::new();
+        let res = client
+            .post(&server_data.options.target_addr)
+            .send_json(&body_json)
+            .await;
+        log::debug!("res: {:?}", res);
+
+        match res {
+            Ok(mut cr) => {
+                let body_res = cr.body().await;
+                match body_res {
+                    Ok(body) => match String::from_utf8(body.to_vec()) {
+                        Ok(body_str) => {
+                            if problems.malformed_response_chance > 0.0
+                                && rng.gen_range(0.0..1.0) < problems.malformed_response_chance
+                            {
+                                log::info!(
+                                    "Malformed response chance hit! ({}%)",
+                                    problems.malformed_response_chance * 100.0
+                                );
+                                response_body_str =
+                                    Some(body_str[0..body_str.len() / 2].to_string());
+                            } else {
+                                //normal path return the response
+                                response_body_str = Some(body_str);
+                            }
+                            cr.status()
+                        }
+                        Err(err) => {
+                            log::error!("Error getting body: {:?}", err);
+                            StatusCode::from_u16(500).unwrap()
+                        }
+                    },
+                    Err(e) => {
+                        log::error!("Error getting body: {:?}", e);
                         StatusCode::from_u16(500).unwrap()
                     }
-                },
-                Err(e) => {
-                    log::error!("Error getting body: {:?}", e);
-                    StatusCode::from_u16(500).unwrap()
                 }
             }
-        }
-        Err(err) => {
-            log::error!("Error: {}", err);
-            StatusCode::from_u16(500).unwrap()
+            Err(err) => {
+                log::error!("Error: {}", err);
+                StatusCode::from_u16(500).unwrap()
+            }
         }
     };
+
     let finish = Instant::now();
     //After call update info
     {
@@ -347,7 +437,7 @@ pub async fn web3(
             .ok_or("Key not found - something went really wrong, beacue it should be here"));
         key_data.total_calls += 1;
 
-        if key_data.calls.len() > 0 {
+        if !key_data.calls.is_empty() {
             call_info.id = key_data.calls.back().unwrap().id + 1;
         }
         key_data.calls.push_back(call_info);
@@ -378,10 +468,20 @@ pub async fn config(_req: HttpRequest, server_data: Data<Box<ServerData>>) -> im
     )
 }
 
+pub async fn set_problems(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
+    //todo set post data
+    let key = return_on_error_json!(req.match_info().get("key").ok_or("No key provided"));
+    //req.
+
+}
+
 pub async fn get_call(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
     let key = return_on_error_json!(req.match_info().get("key").ok_or("No key provided"));
-    let call_no = return_on_error_json!(req.match_info().get("call_no").ok_or("No call no provided"));
-    let call_no = return_on_error_json!(call_no.parse::<u64>().map_err(|e| format!("Error parsing call no: {}", e)));
+    let call_no =
+        return_on_error_json!(req.match_info().get("call_no").ok_or("No call no provided"));
+    let call_no = return_on_error_json!(call_no
+        .parse::<u64>()
+        .map_err(|e| format!("Error parsing call no: {}", e)));
 
     let call = {
         let shared_data = server_data.shared_data.lock().await;
@@ -389,7 +489,7 @@ pub async fn get_call(req: HttpRequest, server_data: Data<Box<ServerData>>) -> i
 
         //this way of extracting call number is good for deque only and it is done in constant time
         let calls: &VecDeque<CallInfo> = &key_data.calls;
-        if calls.len() == 0 {
+        if calls.is_empty() {
             return web::Json(json!({"error": "No calls found for this key"}));
         }
         let first_key_no = calls[0].id;
