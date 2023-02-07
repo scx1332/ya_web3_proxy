@@ -1,4 +1,5 @@
 mod error;
+mod problems;
 
 extern crate core;
 
@@ -18,6 +19,7 @@ use std::time::{Duration, Instant};
 use structopt::StructOpt;
 
 use tokio::sync::Mutex;
+use crate::problems::EndpointSimulateProblems;
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CliOptions {
@@ -182,29 +184,7 @@ pub fn parse_request(
     Ok(parsed_requests)
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EndpointSimulateProblems {
-    pub timeout_chance: f64,
-    pub error_chance: f64,
-    pub malformed_response_chance: f64,
-    pub skip_sending_raw_transaction_chance: f64,
-    pub allow_only_parsed_calls: bool,
-    pub allow_only_single_calls: bool,
-}
 
-impl Default for EndpointSimulateProblems {
-    fn default() -> Self {
-        Self {
-            timeout_chance: 0.0,
-            error_chance: 0.4,
-            malformed_response_chance: 0.4,
-            skip_sending_raw_transaction_chance: 1.0,
-            allow_only_parsed_calls: true,
-            allow_only_single_calls: true,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -468,11 +448,14 @@ pub async fn config(_req: HttpRequest, server_data: Data<Box<ServerData>>) -> im
     )
 }
 
-pub async fn set_problems(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
+pub async fn set_problems(req: HttpRequest, server_data: Data<Box<ServerData>>, mut problems: web::Json<EndpointSimulateProblems>) -> impl Responder {
     //todo set post data
     let key = return_on_error_json!(req.match_info().get("key").ok_or("No key provided"));
     //req.
-
+    let mut shared_data = server_data.shared_data.lock().await;
+    let key_data = return_on_error_json!(shared_data.keys.get_mut(key).ok_or("Key not found"));
+    key_data.problems = problems.into_inner();
+    web::Json(json!({"status": "ok"}))
 }
 
 pub async fn get_call(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
@@ -535,11 +518,13 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
             .app_data(server_data.clone())
             .route("/", web::get().to(greet))
             .route("/config", web::get().to(config))
+            .route("/call/{key}/{call_no}", web::get().to(get_call))
             .route("/calls/{key}", web::get().to(get_calls))
             .route("/calls/{key}/{limit}", web::get().to(get_calls))
             .route("/methods/{key}", web::get().to(get_methods))
             .route("/methods/{key}/{limit}", web::get().to(get_methods))
-            .route("/version", web::get().to(greet));
+            .route("/version", web::get().to(greet))
+            .route("/problems/set/{key}", web::post().to(set_problems));
 
         App::new()
             .wrap(cors)
