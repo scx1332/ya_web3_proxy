@@ -458,6 +458,36 @@ pub async fn set_problems(req: HttpRequest, server_data: Data<Box<ServerData>>, 
     web::Json(json!({"status": "ok"}))
 }
 
+pub async fn get_active_keys(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
+    let last_seconds = req.match_info().get("seconds").unwrap_or("3600").parse::<i64>().unwrap_or(3600);
+    let shared_data = server_data.shared_data.lock().await;
+    let keys: Vec<String> = shared_data.keys.keys().cloned().collect();
+    let mut active_keys = Vec::new();
+
+    let now = chrono::Utc::now();
+    for key in keys.iter() {
+        let key_data = shared_data.keys.get(key).unwrap();
+        if key_data.calls.is_empty() {
+            continue;
+        }
+        let last_call = key_data.calls.back().unwrap();
+        let elapsed : chrono::Duration = now - last_call.date;
+        if elapsed.num_seconds() > last_seconds {
+            continue;
+        }
+        active_keys.push(key.clone());
+    }
+
+    web::Json(json!({"keys": active_keys}))
+}
+
+pub async fn get_keys(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
+    let shared_data = server_data.shared_data.lock().await;
+    let keys: Vec<String> = shared_data.keys.keys().cloned().collect();
+
+    web::Json(json!({"keys": keys}))
+}
+
 pub async fn get_call(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
     let key = return_on_error_json!(req.match_info().get("key").ok_or("No key provided"));
     let call_no =
@@ -524,7 +554,10 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
             .route("/methods/{key}", web::get().to(get_methods))
             .route("/methods/{key}/{limit}", web::get().to(get_methods))
             .route("/version", web::get().to(greet))
-            .route("/problems/set/{key}", web::post().to(set_problems));
+            .route("/problems/set/{key}", web::post().to(set_problems))
+            .route("/keys", web::get().to(get_keys))
+            .route("/keys/active/{seconds}", web::get().to(get_active_keys))
+            .route("/keys/active", web::get().to(get_active_keys));
 
         App::new()
             .wrap(cors)
