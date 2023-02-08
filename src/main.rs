@@ -124,6 +124,7 @@ pub struct CallInfo {
     pub parsed_request: Vec<ParsedRequest>,
     pub date: chrono::DateTime<chrono::Utc>,
     pub response_time: f64,
+    pub status_code: u16,
 }
 
 pub fn parse_request(
@@ -324,10 +325,14 @@ pub async fn web3(
         && rng.gen_range(0.0..1.0) < problems.error_chance
     {
         log::info!("Error chance hit! ({}%)", problems.error_chance * 100.0);
+        response_body_str =
+            Some("simulated 500 error".to_string());
         StatusCode::INTERNAL_SERVER_ERROR
     } else if problems.timeout_chance > 0.0 && rng.gen_range(0.0..1.0) < problems.timeout_chance {
         log::info!("Timeout chance hit! ({}%)", problems.timeout_chance * 100.0);
         tokio::time::sleep(Duration::from_secs(15)).await;
+        response_body_str =
+            Some("simulated 500 error".to_string());
         StatusCode::GATEWAY_TIMEOUT
     } else if parsed_request
         .get(0)
@@ -408,6 +413,7 @@ pub async fn web3(
             parsed_request,
             response: response_body_str.clone(),
             response_time: (finish - start).as_secs_f64(),
+            status_code: status_code.as_u16(),
         };
 
         let mut shared_data = server_data.shared_data.lock().await;
