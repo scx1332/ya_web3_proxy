@@ -15,9 +15,9 @@ impl Default for EndpointSimulateProblems {
     fn default() -> Self {
         Self {
             timeout_chance: 0.0,
-            error_chance: 0.4,
-            malformed_response_chance: 0.4,
-            skip_sending_raw_transaction_chance: 1.0,
+            error_chance: 0.0,
+            malformed_response_chance: 0.0,
+            skip_sending_raw_transaction_chance: 0.0,
             allow_only_parsed_calls: true,
             allow_only_single_calls: true,
         }
