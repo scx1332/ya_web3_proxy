@@ -605,7 +605,7 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
             .route("/keys", web::get().to(get_keys))
             .route("/keys/active/{seconds}", web::get().to(get_active_keys))
             .route("/keys/active", web::get().to(get_active_keys))
-            .route("/keys/delete_all/", web::post().to(remove_all_history))
+            .route("/keys/delete_all", web::post().to(remove_all_history))
             .route(
                 "/keys/delete/{key}",
                 web::post().to(remove_endpoint_history),
