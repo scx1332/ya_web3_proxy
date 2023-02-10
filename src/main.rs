@@ -18,8 +18,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use structopt::StructOpt;
 
-use tokio::sync::Mutex;
 use crate::problems::EndpointSimulateProblems;
+use tokio::sync::Mutex;
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CliOptions {
@@ -185,8 +185,6 @@ pub fn parse_request(
     Ok(parsed_requests)
 }
 
-
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyData {
@@ -325,14 +323,12 @@ pub async fn web3(
         && rng.gen_range(0.0..1.0) < problems.error_chance
     {
         log::info!("Error chance hit! ({}%)", problems.error_chance * 100.0);
-        response_body_str =
-            Some("simulated 500 error".to_string());
+        response_body_str = Some("simulated 500 error".to_string());
         StatusCode::INTERNAL_SERVER_ERROR
     } else if problems.timeout_chance > 0.0 && rng.gen_range(0.0..1.0) < problems.timeout_chance {
         log::info!("Timeout chance hit! ({}%)", problems.timeout_chance * 100.0);
         tokio::time::sleep(Duration::from_secs(15)).await;
-        response_body_str =
-            Some("simulated 500 error".to_string());
+        response_body_str = Some("simulated 500 error".to_string());
         StatusCode::GATEWAY_TIMEOUT
     } else if parsed_request
         .get(0)
@@ -454,7 +450,11 @@ pub async fn config(_req: HttpRequest, server_data: Data<Box<ServerData>>) -> im
     )
 }
 
-pub async fn set_problems(req: HttpRequest, server_data: Data<Box<ServerData>>, mut body: web::Json<EndpointSimulateProblems>) -> impl Responder {
+pub async fn set_problems(
+    req: HttpRequest,
+    server_data: Data<Box<ServerData>>,
+    body: web::Json<EndpointSimulateProblems>,
+) -> impl Responder {
     //todo set post data
     let key = return_on_error_json!(req.match_info().get("key").ok_or("No key provided"));
     //req.
@@ -475,8 +475,37 @@ pub async fn get_problems(req: HttpRequest, server_data: Data<Box<ServerData>>) 
     web::Json(json!({"problems": key_data.problems}))
 }
 
-pub async fn get_active_keys(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
-    let last_seconds = req.match_info().get("seconds").unwrap_or("3600").parse::<i64>().unwrap_or(3600);
+pub async fn remove_endpoint_history(
+    req: HttpRequest,
+    server_data: Data<Box<ServerData>>,
+) -> impl Responder {
+    let key = return_on_error_json!(req.match_info().get("key").ok_or("No key provided"));
+    let mut shared_data = server_data.shared_data.lock().await;
+    shared_data.keys.remove(key);
+
+    web::Json(json!({"status": "ok"}))
+}
+
+pub async fn remove_all_history(
+    _req: HttpRequest,
+    server_data: Data<Box<ServerData>>,
+) -> impl Responder {
+    let mut shared_data = server_data.shared_data.lock().await;
+    shared_data.keys.clear();
+
+    web::Json(json!({"status": "ok"}))
+}
+
+pub async fn get_active_keys(
+    req: HttpRequest,
+    server_data: Data<Box<ServerData>>,
+) -> impl Responder {
+    let last_seconds = req
+        .match_info()
+        .get("seconds")
+        .unwrap_or("3600")
+        .parse::<i64>()
+        .unwrap_or(3600);
     let shared_data = server_data.shared_data.lock().await;
     let keys: Vec<String> = shared_data.keys.keys().cloned().collect();
     let mut active_keys = Vec::new();
@@ -488,21 +517,21 @@ pub async fn get_active_keys(req: HttpRequest, server_data: Data<Box<ServerData>
             continue;
         }
         let last_call = key_data.calls.back().unwrap();
-        let elapsed : chrono::Duration = now - last_call.date;
+        let elapsed: chrono::Duration = now - last_call.date;
         if elapsed.num_seconds() > last_seconds {
             continue;
         }
         active_keys.push(key.clone());
     }
 
-    web::Json(json!({"keys": active_keys}))
+    web::Json(json!({ "keys": active_keys }))
 }
 
-pub async fn get_keys(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
+pub async fn get_keys(_req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
     let shared_data = server_data.shared_data.lock().await;
     let keys: Vec<String> = shared_data.keys.keys().cloned().collect();
 
-    web::Json(json!({"keys": keys}))
+    web::Json(json!({ "keys": keys }))
 }
 
 pub async fn get_call(req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
@@ -511,7 +540,7 @@ pub async fn get_call(req: HttpRequest, server_data: Data<Box<ServerData>>) -> i
         return_on_error_json!(req.match_info().get("call_no").ok_or("No call no provided"));
     let call_no = return_on_error_json!(call_no
         .parse::<u64>()
-        .map_err(|e| format!("Error parsing call no: {}", e)));
+        .map_err(|e| format!("Error parsing call no: {e}")));
 
     let call = {
         let shared_data = server_data.shared_data.lock().await;
@@ -575,7 +604,12 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
             .route("/problems/{key}", web::get().to(get_problems))
             .route("/keys", web::get().to(get_keys))
             .route("/keys/active/{seconds}", web::get().to(get_active_keys))
-            .route("/keys/active", web::get().to(get_active_keys));
+            .route("/keys/active", web::get().to(get_active_keys))
+            .route("/keys/delete_all/", web::post().to(remove_all_history))
+            .route(
+                "/keys/delete/{key}",
+                web::post().to(remove_endpoint_history),
+            );
 
         App::new()
             .wrap(cors)
