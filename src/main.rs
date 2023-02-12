@@ -1,5 +1,6 @@
 mod error;
 mod problems;
+mod frontend;
 
 extern crate core;
 
@@ -20,6 +21,7 @@ use structopt::StructOpt;
 
 use crate::problems::EndpointSimulateProblems;
 use tokio::sync::Mutex;
+use crate::frontend::frontend_scope;
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CliOptions {
@@ -611,6 +613,8 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
                 web::post().to(remove_endpoint_history),
             );
 
+
+
         App::new()
             .wrap(cors)
             .app_data(server_data.clone())
@@ -619,6 +623,7 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
             .route("/", web::get().to(greet))
             .route("/api", web::get().to(greet))
             .service(scope)
+            .service(frontend_scope())
     })
     .workers(cli.http_threads as usize)
     .bind((cli.http_addr.as_str(), cli.http_port))
