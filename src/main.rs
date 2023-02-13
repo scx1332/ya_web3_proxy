@@ -1,6 +1,6 @@
 mod error;
-mod problems;
 mod frontend;
+mod problems;
 
 extern crate core;
 
@@ -19,9 +19,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use structopt::StructOpt;
 
+use crate::frontend::frontend_scope;
 use crate::problems::EndpointSimulateProblems;
 use tokio::sync::Mutex;
-use crate::frontend::frontend_scope;
 
 #[derive(Debug, StructOpt, Clone)]
 pub struct CliOptions {
@@ -612,8 +612,6 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
                 "/keys/delete/{key}",
                 web::post().to(remove_endpoint_history),
             );
-
-
 
         App::new()
             .wrap(cors)
