@@ -9,7 +9,7 @@ struct Asset;
 
 pub async fn redirect_to_frontend() -> impl Responder {
     let target = "/frontend/";
-
+    log::debug!("Redirecting to endpoint: {target}");
     HttpResponse::Ok()
         .status(StatusCode::PERMANENT_REDIRECT)
         .append_header((header::LOCATION, target))
@@ -17,12 +17,14 @@ pub async fn redirect_to_frontend() -> impl Responder {
 }
 
 pub async fn frontend_serve(path: web::Path<String>) -> impl Responder {
-    let path = if path.as_str().is_empty() {
-        "index.html"
-    } else {
-        path.as_str()
-    };
-    match Asset::get(path) {
+    let mut path = path.as_str();
+    let mut content = Asset::get(path);
+    if content.is_none() && !path.contains('.') {
+        path = "index.html";
+        content = Asset::get(path);
+    }
+    log::debug!("Serving frontend file: {path}");
+    match content {
         Some(content) => HttpResponse::Ok()
             .content_type(from_path(path).first_or_octet_stream().as_ref())
             .body(content.data.into_owned()),
