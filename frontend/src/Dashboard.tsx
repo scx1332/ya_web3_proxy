@@ -1,8 +1,7 @@
-import React, { useContext } from "react";
+import React from "react";
 import "./Dashboard.css";
 import { Routes, Route, Link } from "react-router-dom";
 import { useConfigResult } from "./ConfigProvider";
-import { BackendSettingsContext } from "./BackendSettingsProvider";
 import BackendSettingsPage from "./BackendSettingsPage";
 import Monitor from "./Monitor";
 import SingleCallInfo from "./SingleCallInfo";

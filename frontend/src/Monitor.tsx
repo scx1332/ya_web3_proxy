@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useState } from "react";
 import "./Monitor.css";
-import LatestCalls, { LatestCall } from "./LatestCalls";
+import LatestCalls from "./LatestCalls";
 import { BackendSettingsContext } from "./BackendSettingsProvider";
 import { backendFetch } from "./common/BackendCall";
 

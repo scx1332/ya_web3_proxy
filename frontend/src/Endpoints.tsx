@@ -53,7 +53,9 @@ const Endpoint = (props: EndpointProps) => {
         }
     }, [setProblems, refresh]);
     React.useEffect(() => {
-        loadProblems().then(() => {});
+        loadProblems().then(() => {
+            // loadProblems finished
+        });
     }, [loadProblems]);
 
     React.useEffect(() => {
@@ -239,7 +241,9 @@ const Endpoints = () => {
         console.log("Refreshing dashboard...");
         //timeout
         //sleep
-        loadEndpoints().then(() => {});
+        loadEndpoints().then(() => {
+            //setLoading(false);
+        });
     }, [loadEndpoints, refresh]);
 
     const deleteAll = useCallback(async () => {

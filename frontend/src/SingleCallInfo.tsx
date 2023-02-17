@@ -3,7 +3,7 @@ import "./SingleCallInfo.css";
 import { useParams } from "react-router";
 import { backendFetch } from "./common/BackendCall";
 import { BackendSettingsContext } from "./BackendSettingsProvider";
-import LatestCalls, { LatestCall } from "./LatestCalls";
+import { LatestCall } from "./LatestCalls";
 import { JSONTree } from "react-json-tree";
 import { KeyPath } from "react-json-tree/src/types";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
@@ -77,7 +77,8 @@ const SingleCallInfo = (/*props: SingleCallInfoProps*/) => {
             </div>
         );
     }
-    const shouldExpandNodeInitially = (keyName: KeyPath, data: any, level: number) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const shouldExpandNodeInitially = (keyName: KeyPath, data: unknown, level: number) => {
         return true;
     };
 
