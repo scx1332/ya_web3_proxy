@@ -4,7 +4,7 @@ mod problems;
 extern crate core;
 
 use crate::error::*;
-use actix_web::http::StatusCode;
+use actix_web::http::{header, StatusCode};
 use actix_web::web::{Bytes, Data};
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder, Scope};
 use env_logger::Env;
@@ -578,6 +578,11 @@ struct Asset;
 
 fn handle_embedded_file(path: &str) -> HttpResponse {
     log::debug!("Serving embedded file: {}", path);
+    let path = if path.is_empty() {
+        "index.html"
+    } else {
+        path
+    };
     match Asset::get(path) {
         Some(content) => HttpResponse::Ok()
             .content_type(from_path(path).first_or_octet_stream().as_ref())
@@ -586,9 +591,14 @@ fn handle_embedded_file(path: &str) -> HttpResponse {
     }
 }
 
-#[actix_web::get("/frontend")]
-async fn index() -> impl Responder {
-    handle_embedded_file("index.html")
+pub async fn redirect_to_frontend(req: HttpRequest) -> impl Responder {
+    let target = "/frontend/";
+
+    HttpResponse::Ok().status(StatusCode::PERMANENT_REDIRECT)
+        .append_header((
+            header::LOCATION,
+            target,
+        )).finish()
 }
 
 #[actix_web::get("/frontend/{_:.*}")]
@@ -644,8 +654,9 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
             .app_data(server_data.clone())
             .route("web3/{key}", web::get().to(web3))
             .route("web3/{key}", web::post().to(web3))
-            .route("/", web::get().to(greet))
+            .route("/", web::get().to(redirect_to_frontend))
             .route("/api", web::get().to(greet))
+            .route("/frontend", web::get().to(redirect_to_frontend))
             .service(scope)
             .service(frontend)
     })
