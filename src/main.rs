@@ -1,5 +1,4 @@
 mod error;
-mod frontend;
 mod problems;
 
 extern crate core;
@@ -17,9 +16,9 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use mime_guess::from_path;
 use structopt::StructOpt;
 
-use crate::frontend::frontend_scope;
 use crate::problems::EndpointSimulateProblems;
 use tokio::sync::Mutex;
 
@@ -571,9 +570,36 @@ pub async fn get_call(req: HttpRequest, server_data: Data<Box<ServerData>>) -> i
     }))
 }
 
+use rust_embed::RustEmbed;
+
+#[derive(RustEmbed)]
+#[folder = "frontend/frontend/"]
+struct Asset;
+
+fn handle_embedded_file(path: &str) -> HttpResponse {
+    log::debug!("Serving embedded file: {}", path);
+    match Asset::get(path) {
+        Some(content) => HttpResponse::Ok()
+            .content_type(from_path(path).first_or_octet_stream().as_ref())
+            .body(content.data.into_owned()),
+        None => HttpResponse::NotFound().body("404 Not Found"),
+    }
+}
+
+#[actix_web::get("/frontend")]
+async fn index() -> impl Responder {
+    handle_embedded_file("index.html")
+}
+
+#[actix_web::get("/frontend/{_:.*}")]
+async fn frontend(path: web::Path<String>) -> impl Responder {
+    handle_embedded_file(path.as_str())
+}
+
+
 async fn main_internal() -> Result<(), Web3ProxyError> {
     if let Err(err) = dotenv::dotenv() {
-        panic!("Error loading .env file: {err}");
+        log::error!("Cannot load .env file: {err}");
     }
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let cli: CliOptions = CliOptions::from_args();
@@ -621,7 +647,7 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
             .route("/", web::get().to(greet))
             .route("/api", web::get().to(greet))
             .service(scope)
-            .service(frontend_scope())
+            .service(frontend)
     })
     .workers(cli.http_threads as usize)
     .bind((cli.http_addr.as_str(), cli.http_port))
