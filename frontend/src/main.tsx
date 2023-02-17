@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import Dashboard from "./Dashboard";
-import { ConfigProvider, FRONTEND_BASE, globalSetDefaultBackendUrl } from "./ConfigProvider";
+import { ConfigProvider } from "./ConfigProvider";
 import { BrowserRouter } from "react-router-dom";
 import { Routes, Route } from "react-router-dom";
 import { BackendSettingsProvider } from "./BackendSettingsProvider";
@@ -12,27 +12,26 @@ if (!rootEl) {
     throw new Error("No root element found");
 }
 const root = ReactDOM.createRoot(rootEl);
-
-interface FrontendConfig {
-    backendUrl: string;
+const baseUri = document.baseURI;
+//check if string inside uri
+if (FRONTEND_BASE != "/" && !baseUri.includes(FRONTEND_BASE)) {
+    root.render(
+        <div>
+            <p>Invalid base URI, navigate to {FRONTEND_BASE}</p>
+        </div>,
+    );
+} else {
+    root.render(
+        <React.StrictMode>
+            <BackendSettingsProvider>
+                <ConfigProvider>
+                    <BrowserRouter basename={FRONTEND_BASE}>
+                        <Routes>
+                            <Route path="/*" element={<Dashboard />} />
+                        </Routes>
+                    </BrowserRouter>
+                </ConfigProvider>
+            </BackendSettingsProvider>
+        </React.StrictMode>,
+    );
 }
-
-fetch(`${FRONTEND_BASE}/config.json`).then((resp) => {
-    resp.json().then((config: FrontendConfig) => {
-        globalSetDefaultBackendUrl(config.backendUrl);
-
-        root.render(
-            <React.StrictMode>
-                <BackendSettingsProvider>
-                    <ConfigProvider>
-                        <BrowserRouter basename={FRONTEND_BASE}>
-                            <Routes>
-                                <Route path="/*" element={<Dashboard />} />
-                            </Routes>
-                        </BrowserRouter>
-                    </ConfigProvider>
-                </BackendSettingsProvider>
-            </React.StrictMode>,
-        );
-    });
-});

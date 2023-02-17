@@ -27,7 +27,6 @@ a:hover {
     background-color: #f2f2ff;
 }
 
-
 button {
     display: inline-block;
     outline: none;
@@ -35,9 +34,9 @@ button {
     border: 1px solid #0f62fe;
     text-align: left;
     vertical-align: top;
-    padding: calc(.875rem - 3px) 63px calc(.875rem - 3px) 15px;
+    padding: calc(0.875rem - 3px) 63px calc(0.875rem - 3px) 15px;
     background-color: #00000000;
-    font-size: 1.0em;
+    font-size: 1em;
     min-height: 2rem;
     color: #0f62fe;
 }
@@ -48,7 +47,7 @@ button:hover {
     color: #fff;
 }
 button:disabled,
-button[disabled]{
+button[disabled] {
     border: 1px solid #999999;
     background-color: #cccccc;
     color: #666666;

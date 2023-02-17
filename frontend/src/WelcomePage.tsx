@@ -1,7 +1,7 @@
-import React, {useContext} from 'react';
-import './WelcomePage.css';
-import {BackendSettingsContext} from "./BackendSettingsProvider";
-import {useBackendConfig} from "./ConfigProvider";
+import React, { useContext } from "react";
+import "./WelcomePage.css";
+import { BackendSettingsContext } from "./BackendSettingsProvider";
+import { useBackendConfig } from "./ConfigProvider";
 
 const WelcomePage = () => {
     const { backendSettings } = useContext(BackendSettingsContext);

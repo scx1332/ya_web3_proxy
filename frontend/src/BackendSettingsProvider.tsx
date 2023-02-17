@@ -1,5 +1,4 @@
 import React, { createContext, useCallback, useState } from "react";
-import { DEFAULT_BACKEND_URL } from "./ConfigProvider";
 import BackendSettings from "./common/BackendSettings";
 
 interface BackendSettingsContextType {

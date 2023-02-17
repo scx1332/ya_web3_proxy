@@ -37,7 +37,7 @@ const Dashboard = () => {
                 </div>
                 <div className="main-content">
                     <Routes>
-                        <Route path="/" element={<WelcomePage/>} />
+                        <Route path="/" element={<WelcomePage />} />
                         <Route
                             path="monitor"
                             element={

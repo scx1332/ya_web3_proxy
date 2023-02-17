@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useState } from "react";
 import "./Monitor.css";
-import LatestCalls, {LatestCall} from "./LatestCalls";
+import LatestCalls, { LatestCall } from "./LatestCalls";
 import { BackendSettingsContext } from "./BackendSettingsProvider";
 import { backendFetch } from "./common/BackendCall";
 
@@ -32,14 +32,10 @@ const Monitor = () => {
     }, [setNextRefresh, nextRefresh]);
 
     function row(key: string) {
-        return <LatestCalls key={key} apikey={key} refreshToken={nextRefresh} />
+        return <LatestCalls key={key} apikey={key} refreshToken={nextRefresh} />;
     }
 
-    return (
-        <div className={"monitor-appkey-lister"}>
-            {keys.map(row)}
-        </div>
-    );
+    return <div className={"monitor-appkey-lister"}>{keys.map(row)}</div>;
 };
 
 export default Monitor;

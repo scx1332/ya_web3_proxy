@@ -1,7 +1,7 @@
-import React, {useCallback, useContext, useState} from 'react';
-import "./Endpoints.css"
-import {BackendSettingsContext} from "./BackendSettingsProvider";
-import {backendFetch} from "./common/BackendCall";
+import React, { useCallback, useContext, useState } from "react";
+import "./Endpoints.css";
+import { BackendSettingsContext } from "./BackendSettingsProvider";
+import { backendFetch } from "./common/BackendCall";
 import { confirm } from "react-confirm-box";
 
 interface EndpointProps {
@@ -9,12 +9,12 @@ interface EndpointProps {
 }
 
 interface EndpointProblems {
-    timeoutChance: number,
-    errorChance: number,
-    malformedResponseChance: number,
-    skipSendingRawTransactionChance: number,
-    allowOnlyParsedCalls: boolean,
-    allowOnlySingleCalls: boolean,
+    timeoutChance: number;
+    errorChance: number;
+    malformedResponseChance: number;
+    skipSendingRawTransactionChance: number;
+    allowOnlyParsedCalls: boolean;
+    allowOnlySingleCalls: boolean;
 }
 
 const Endpoint = (props: EndpointProps) => {
@@ -22,8 +22,6 @@ const Endpoint = (props: EndpointProps) => {
         console.log("Refreshing dashboard...");
         //timeout
         //sleep
-
-
     }, [props]);
 
     const [problems, setProblems] = useState<EndpointProblems | null>(null);
@@ -55,10 +53,8 @@ const Endpoint = (props: EndpointProps) => {
         }
     }, [setProblems, refresh]);
     React.useEffect(() => {
-        loadProblems().then(() => {
-        });
+        loadProblems().then(() => {});
     }, [loadProblems]);
-
 
     React.useEffect(() => {
         const errorChanceNumber = parseFloat(errorChance);
@@ -110,49 +106,60 @@ const Endpoint = (props: EndpointProps) => {
                 malformedResponseChance: parseFloat(malformedResponseChance),
                 skipSendingRawTransactionChance: parseFloat(skipSendingRawTransactionChance),
                 allowOnlyParsedCalls: problems.allowOnlyParsedCalls,
-                allowOnlySingleCalls: problems.allowOnlySingleCalls
+                allowOnlySingleCalls: problems.allowOnlySingleCalls,
             };
             await backendFetch(backendSettings, `/problems/set/${props.apikey}`, {
                 method: "POST",
-                body: JSON.stringify(newProblems)
+                body: JSON.stringify(newProblems),
             });
 
             setRefresh(refresh + 1);
         }
-    }, [problems, refresh, setRefresh, errorChance, timeoutChance, malformedResponseChance, skipSendingRawTransactionChance]);
-
+    }, [
+        problems,
+        refresh,
+        setRefresh,
+        errorChance,
+        timeoutChance,
+        malformedResponseChance,
+        skipSendingRawTransactionChance,
+    ]);
 
     const deleteEndpoint = useCallback(async () => {
         const result = await confirm("Are you sure you want to delete all endpoint history?");
         if (result) {
             await backendFetch(backendSettings, `/keys/delete/${props.apikey}`, {
-                method: "POST"
+                method: "POST",
             });
             setRefresh(refresh + 1);
         }
     }, [refresh, setRefresh, props]);
 
-
     if (problems === null) {
-        return         <div className={"endpoint"}>
-            <div>loading...</div>
-        </div>;
+        return (
+            <div className={"endpoint"}>
+                <div>loading...</div>
+            </div>
+        );
     }
 
-    let buttonDisabled = (errorChanceValidation !== "" || timeoutChanceValidation !== "" || malformedResponseChanceValidation !== "" || skipSendingRawTransactionChanceValidation !== "");
+    let buttonDisabled =
+        errorChanceValidation !== "" ||
+        timeoutChanceValidation !== "" ||
+        malformedResponseChanceValidation !== "" ||
+        skipSendingRawTransactionChanceValidation !== "";
 
-    if (errorChance === problems.errorChance.toString()
-        && timeoutChance === problems.timeoutChance.toString()
-        && malformedResponseChance === problems.malformedResponseChance.toString()
-        && skipSendingRawTransactionChance === problems.skipSendingRawTransactionChance.toString()) {
+    if (
+        errorChance === problems.errorChance.toString() &&
+        timeoutChance === problems.timeoutChance.toString() &&
+        malformedResponseChance === problems.malformedResponseChance.toString() &&
+        skipSendingRawTransactionChance === problems.skipSendingRawTransactionChance.toString()
+    ) {
         buttonDisabled = true;
     }
 
-
     return (
         <div className={"endpoint"}>
-
-
             <div className={"endpoint-header-title"}>Endpoint {props.apikey}</div>
             <div>{JSON.stringify(problems)}</div>
 
@@ -160,35 +167,59 @@ const Endpoint = (props: EndpointProps) => {
                 <tbody>
                     <tr>
                         <th>Error chance per request</th>
-                        <td><input value={errorChance} onChange={(e) => setErrorChance(e.target.value)}/></td>
+                        <td>
+                            <input value={errorChance} onChange={(e) => setErrorChance(e.target.value)} />
+                        </td>
                         <td>{problems.errorChance}</td>
-                        <td><div>{errorChanceValidation}</div></td>
+                        <td>
+                            <div>{errorChanceValidation}</div>
+                        </td>
                     </tr>
                     <tr>
                         <th>Timeout chance per request</th>
-                        <td><input value={timeoutChance} onChange={(e) => setTimeoutChance(e.target.value)}/></td>
+                        <td>
+                            <input value={timeoutChance} onChange={(e) => setTimeoutChance(e.target.value)} />
+                        </td>
                         <td>{problems.timeoutChance}</td>
-                        <td><div>{timeoutChanceValidation}</div></td>
+                        <td>
+                            <div>{timeoutChanceValidation}</div>
+                        </td>
                     </tr>
                     <tr>
                         <th>Malformed response chance</th>
-                        <td><input value={malformedResponseChance} onChange={(e) => setMalformedResponseChance(e.target.value)}/></td>
+                        <td>
+                            <input
+                                value={malformedResponseChance}
+                                onChange={(e) => setMalformedResponseChance(e.target.value)}
+                            />
+                        </td>
                         <td>{problems.malformedResponseChance}</td>
-                        <td><div>{malformedResponseChanceValidation}</div></td>
+                        <td>
+                            <div>{malformedResponseChanceValidation}</div>
+                        </td>
                     </tr>
                     <tr>
                         <th>Skip sending chance</th>
-                        <td><input value={skipSendingRawTransactionChance} onChange={(e) => setSkipSendingRawTransactionChance(e.target.value)}/></td>
+                        <td>
+                            <input
+                                value={skipSendingRawTransactionChance}
+                                onChange={(e) => setSkipSendingRawTransactionChance(e.target.value)}
+                            />
+                        </td>
                         <td>{problems.skipSendingRawTransactionChance}</td>
-                        <td><div>{skipSendingRawTransactionChanceValidation}</div></td>
+                        <td>
+                            <div>{skipSendingRawTransactionChanceValidation}</div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
             <button onClick={() => deleteEndpoint()}>Delete</button>
-            <button disabled={buttonDisabled} onClick={() => saveProblems()}>Save</button>
-        </div>);
-
-}
+            <button disabled={buttonDisabled} onClick={() => saveProblems()}>
+                Save
+            </button>
+        </div>
+    );
+};
 const Endpoints = () => {
     const [keys, setKeys] = useState<string[]>([]);
     const [refresh, setRefresh] = useState(0);
@@ -208,15 +239,14 @@ const Endpoints = () => {
         console.log("Refreshing dashboard...");
         //timeout
         //sleep
-        loadEndpoints().then(() => {
-        });
+        loadEndpoints().then(() => {});
     }, [loadEndpoints, refresh]);
 
     const deleteAll = useCallback(async () => {
         const result = await confirm("Are you sure you want to delete all endpoints history?");
         if (result) {
             await backendFetch(backendSettings, `/keys/delete_all`, {
-                method: "POST"
+                method: "POST",
             });
             setRefresh(refresh + 1);
         }
@@ -228,7 +258,7 @@ const Endpoints = () => {
     }, [refresh, setRefresh]);
 
     function row(key: string) {
-        return <Endpoint key={key} apikey={key} />
+        return <Endpoint key={key} apikey={key} />;
     }
     return (
         <div className={"endpoints"}>
@@ -239,7 +269,6 @@ const Endpoints = () => {
             {keys.map(row)}
         </div>
     );
-
-}
+};
 
 export default Endpoints;

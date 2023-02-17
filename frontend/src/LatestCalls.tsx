@@ -3,7 +3,6 @@ import "./LatestCalls.css";
 import { backendFetch } from "./common/BackendCall";
 import { BackendSettingsContext } from "./BackendSettingsProvider";
 import DateBox from "./DateBox";
-import {FRONTEND_BASE} from "./ConfigProvider";
 
 interface ParsedCall {
     method: string;
@@ -44,23 +43,23 @@ const CallBox = (props: CellBoxProps) => {
             <DateBox date={call.date} title={"Time"} minimal={true}></DateBox>
             <div className={"call-box-body"}>
                 {call.parsedRequest.length > 0 ? (
-                <>
-                    <div>{call.parsedRequest[0].method ?? "unknown"}</div>
                     <>
-                        {call.parsedRequest[0].parsedCall?.to && (
-                            <div>
-                                <div>Contract :</div>
-                                <div>{call.parsedRequest[0].parsedCall.to}</div>
-                            </div>
-                        )}
-                        {call.parsedRequest[0].parsedCall && (
-                            <div>
-                                <div>ERC20 balance:</div>
-                                <div>{call.parsedRequest[0].parsedCall.address}</div>
-                            </div>
-                        )}
+                        <div>{call.parsedRequest[0].method ?? "unknown"}</div>
+                        <>
+                            {call.parsedRequest[0].parsedCall?.to && (
+                                <div>
+                                    <div>Contract :</div>
+                                    <div>{call.parsedRequest[0].parsedCall.to}</div>
+                                </div>
+                            )}
+                            {call.parsedRequest[0].parsedCall && (
+                                <div>
+                                    <div>ERC20 balance:</div>
+                                    <div>{call.parsedRequest[0].parsedCall.address}</div>
+                                </div>
+                            )}
+                        </>
                     </>
-                </>
                 ) : (
                     <div>unknown</div>
                 )}

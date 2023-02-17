@@ -1,4 +1,4 @@
-import React, {useCallback, useContext, useEffect, useState} from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import "./SingleCallInfo.css";
 import { useParams } from "react-router";
 import { backendFetch } from "./common/BackendCall";
@@ -9,7 +9,6 @@ import { KeyPath } from "react-json-tree/src/types";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
 import DateBox from "./DateBox";
-import {FRONTEND_BASE} from "./ConfigProvider";
 
 //interface SingleCallInfoProps {
 //call: any;
@@ -84,34 +83,39 @@ const SingleCallInfo = (/*props: SingleCallInfoProps*/) => {
 
     function changeCall(nextCall: number) {
         setCallNo(nextCall);
-        window.history.replaceState(null, "", `${FRONTEND_BASE}call/${params.key}/${nextCall}`)
+        window.history.replaceState(null, "", `${FRONTEND_BASE}call/${params.key}/${nextCall}`);
     }
-
 
     return (
         <div className={"single-call-info"}>
-            <button style={{margin: "0 0.5rem 0.5rem 0"}} disabled={callNo == 0} onClick={() => changeCall(callNo - 1)}>Previous call</button>
+            <button
+                style={{ margin: "0 0.5rem 0.5rem 0" }}
+                disabled={callNo == 0}
+                onClick={() => changeCall(callNo - 1)}
+            >
+                Previous call
+            </button>
             <button onClick={() => changeCall(callNo + 1)}>Next call</button>
             <table>
                 <tbody>
-                <tr>
-                    <th>Web3 endpoint key</th>
-                    <td>{params.key}</td>
-                </tr>
-                <tr>
-                    <th>Call no</th>
-                    <td>{call?.id}</td>
-                </tr>
-                <tr>
-                    <th>Call time</th>
-                    <td>
-                        <DateBox date={call?.date} title={"Call time"} minimal={false} />
-                    </td>
-                </tr>
-                <tr>
-                    <th>Response time</th>
-                    <td>{call?.responseTime}</td>
-                </tr>
+                    <tr>
+                        <th>Web3 endpoint key</th>
+                        <td>{params.key}</td>
+                    </tr>
+                    <tr>
+                        <th>Call no</th>
+                        <td>{call?.id}</td>
+                    </tr>
+                    <tr>
+                        <th>Call time</th>
+                        <td>
+                            <DateBox date={call?.date} title={"Call time"} minimal={false} />
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Response time</th>
+                        <td>{call?.responseTime}</td>
+                    </tr>
                 </tbody>
             </table>
             <div>
