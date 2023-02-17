@@ -576,22 +576,7 @@ use rust_embed::RustEmbed;
 #[folder = "frontend/frontend/"]
 struct Asset;
 
-fn handle_embedded_file(path: &str) -> HttpResponse {
-    log::debug!("Serving embedded file: {}", path);
-    let path = if path.is_empty() {
-        "index.html"
-    } else {
-        path
-    };
-    match Asset::get(path) {
-        Some(content) => HttpResponse::Ok()
-            .content_type(from_path(path).first_or_octet_stream().as_ref())
-            .body(content.data.into_owned()),
-        None => HttpResponse::NotFound().body("404 Not Found"),
-    }
-}
-
-pub async fn redirect_to_frontend(req: HttpRequest) -> impl Responder {
+pub async fn redirect_to_frontend() -> impl Responder {
     let target = "/frontend/";
 
     HttpResponse::Ok().status(StatusCode::PERMANENT_REDIRECT)
@@ -601,9 +586,18 @@ pub async fn redirect_to_frontend(req: HttpRequest) -> impl Responder {
         )).finish()
 }
 
-#[actix_web::get("/frontend/{_:.*}")]
-async fn frontend(path: web::Path<String>) -> impl Responder {
-    handle_embedded_file(path.as_str())
+async fn frontend_serve(path: web::Path<String>) -> impl Responder {
+    let path = if path.as_str().is_empty() {
+        "index.html"
+    } else {
+        path.as_str()
+    };
+    match Asset::get(path) {
+        Some(content) => HttpResponse::Ok()
+            .content_type(from_path(path).first_or_octet_stream().as_ref())
+            .body(content.data.into_owned()),
+        None => HttpResponse::NotFound().body("404 Not Found"),
+    }
 }
 
 
@@ -654,11 +648,11 @@ async fn main_internal() -> Result<(), Web3ProxyError> {
             .app_data(server_data.clone())
             .route("web3/{key}", web::get().to(web3))
             .route("web3/{key}", web::post().to(web3))
-            .route("/", web::get().to(redirect_to_frontend))
             .route("/api", web::get().to(greet))
+            .route("/", web::get().to(redirect_to_frontend))
             .route("/frontend", web::get().to(redirect_to_frontend))
+            .route("/frontend/{_:.*}", web::get().to(frontend_serve))
             .service(scope)
-            .service(frontend)
     })
     .workers(cli.http_threads as usize)
     .bind((cli.http_addr.as_str(), cli.http_port))
