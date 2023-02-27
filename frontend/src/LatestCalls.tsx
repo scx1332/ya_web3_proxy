@@ -71,6 +71,7 @@ const CallBox = (props: CellBoxProps) => {
 interface LatestCallsProps {
     apikey: string;
     refreshToken: number;
+    showAtOnce: number;
 }
 
 const LatestCalls = (props: LatestCallsProps) => {
@@ -79,7 +80,7 @@ const LatestCalls = (props: LatestCallsProps) => {
 
     const loadTxCount = useCallback(async () => {
         try {
-            const response = await backendFetch(backendSettings, `/calls/${props.apikey}/10`);
+            const response = await backendFetch(backendSettings, `/calls/${props.apikey}/${props.showAtOnce}`);
             const response_json = await response.json();
             setCalls(response_json);
         } catch (e) {
