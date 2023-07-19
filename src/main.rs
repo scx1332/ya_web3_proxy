@@ -5,7 +5,7 @@ mod problems;
 extern crate core;
 
 use crate::error::*;
-use actix_web::http::{StatusCode};
+use actix_web::http::StatusCode;
 use actix_web::web::{Bytes, Data};
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder, Scope};
 use env_logger::Env;
@@ -438,11 +438,11 @@ pub async fn web3(
 
 pub async fn greet(_req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
     const VERSION: &str = env!("CARGO_PKG_VERSION");
-    return web::Json(json!({
+    web::Json(json!({
         "name": "web3_proxy",
         "server_info": format!("Listen: {}:{}", server_data.options.http_addr, server_data.options.http_port),
         "version": VERSION,
-    }));
+    }))
 }
 
 pub async fn config(_req: HttpRequest, server_data: Data<Box<ServerData>>) -> impl Responder {
