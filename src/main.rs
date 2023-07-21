@@ -368,7 +368,21 @@ pub async fn web3(
                 match body_res {
                     Ok(body) => match String::from_utf8(body.to_vec()) {
                         Ok(body_str) => {
-                            if problems.malformed_response_chance > 0.0
+                            if problems.send_transaction_but_report_failure_chance > 0.0
+                                && parsed_request
+                                    .get(0)
+                                    .map(|f| f.method == "eth_sendRawTransaction")
+                                    .unwrap_or(false)
+                                && rng.gen_range(0.0..1.0)
+                                    < problems.send_transaction_but_report_failure_chance
+                            {
+                                log::info!(
+                                    "Send raw transaction but report error hit! ({}%)",
+                                    problems.send_transaction_but_report_failure_chance * 100.0
+                                );
+                                StatusCode::from_u16(500).unwrap()
+                            }
+                            else if problems.malformed_response_chance > 0.0
                                 && rng.gen_range(0.0..1.0) < problems.malformed_response_chance
                             {
                                 log::info!(
@@ -377,11 +391,12 @@ pub async fn web3(
                                 );
                                 response_body_str =
                                     Some(body_str[0..body_str.len() / 2].to_string());
+                                cr.status()
                             } else {
                                 //normal path return the response
                                 response_body_str = Some(body_str);
+                                cr.status()
                             }
-                            cr.status()
                         }
                         Err(err) => {
                             log::error!("Error getting body: {:?}", err);

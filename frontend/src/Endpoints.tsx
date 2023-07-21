@@ -13,6 +13,7 @@ interface EndpointProblems {
     errorChance: number;
     malformedResponseChance: number;
     skipSendingRawTransactionChance: number;
+    sendTransactionButReportFailureChance: number;
     allowOnlyParsedCalls: boolean;
     allowOnlySingleCalls: boolean;
 }
@@ -30,11 +31,13 @@ const Endpoint = (props: EndpointProps) => {
     const [timeoutChance, setTimeoutChance] = useState<string>("");
     const [malformedResponseChance, setMalformedResponseChance] = useState<string>("");
     const [skipSendingRawTransactionChance, setSkipSendingRawTransactionChance] = useState<string>("");
+    const [sendTransactionButReportFailureChance, setSendTransactionButReportFailureChance] = useState<string>("");
 
     const [errorChanceValidation, setErrorChanceValidation] = useState<string>("");
     const [timeoutChanceValidation, setTimeoutChanceValidation] = useState<string>("");
     const [malformedResponseChanceValidation, setMalformedResponseChanceValidation] = useState<string>("");
     const [skipSendingRawTransactionChanceValidation, setRawTransactionChanceValidation] = useState<string>("");
+    const [sendTransactionButReportFailureChanceValidation, setSendTransactionButReportFailureChanceValidation] = useState<string>("");
 
     const [refresh, setRefresh] = useState(0);
 
@@ -47,6 +50,7 @@ const Endpoint = (props: EndpointProps) => {
             setTimeoutChance(response_json.problems.timeoutChance.toString());
             setMalformedResponseChance(response_json.problems.malformedResponseChance.toString());
             setSkipSendingRawTransactionChance(response_json.problems.skipSendingRawTransactionChance.toString());
+            setSendTransactionButReportFailureChance(response_json.problems.sendTransactionButReportFailureChance.toString());
         } catch (e) {
             console.log(e);
             setProblems(null);
@@ -99,6 +103,17 @@ const Endpoint = (props: EndpointProps) => {
             setRawTransactionChanceValidation("Has to be number between 0.0 and 1.0");
         }
     }, [skipSendingRawTransactionChance]);
+    React.useEffect(() => {
+        const sendTransactionButReportFailureChanceNumber = parseFloat(sendTransactionButReportFailureChance);
+        if (isNaN(sendTransactionButReportFailureChanceNumber)) {
+            setSendTransactionButReportFailureChanceValidation("Not a number");
+        } else if (sendTransactionButReportFailureChanceNumber >= 0.0 && sendTransactionButReportFailureChanceNumber <= 1.0) {
+            console.log("Updating error chance to " + sendTransactionButReportFailureChanceNumber);
+            setSendTransactionButReportFailureChanceValidation("");
+        } else {
+            setSendTransactionButReportFailureChanceValidation("Has to be number between 0.0 and 1.0");
+        }
+    }, [sendTransactionButReportFailureChance]);
     const saveProblems = useCallback(async () => {
         if (problems) {
             console.log("Saving problems");
@@ -107,6 +122,7 @@ const Endpoint = (props: EndpointProps) => {
                 timeoutChance: parseFloat(timeoutChance),
                 malformedResponseChance: parseFloat(malformedResponseChance),
                 skipSendingRawTransactionChance: parseFloat(skipSendingRawTransactionChance),
+                sendTransactionButReportFailureChance: parseFloat(sendTransactionButReportFailureChance),
                 allowOnlyParsedCalls: problems.allowOnlyParsedCalls,
                 allowOnlySingleCalls: problems.allowOnlySingleCalls,
             };
@@ -125,6 +141,7 @@ const Endpoint = (props: EndpointProps) => {
         timeoutChance,
         malformedResponseChance,
         skipSendingRawTransactionChance,
+        sendTransactionButReportFailureChance,
     ]);
 
     const deleteEndpoint = useCallback(async () => {
@@ -149,13 +166,15 @@ const Endpoint = (props: EndpointProps) => {
         errorChanceValidation !== "" ||
         timeoutChanceValidation !== "" ||
         malformedResponseChanceValidation !== "" ||
-        skipSendingRawTransactionChanceValidation !== "";
+        skipSendingRawTransactionChanceValidation !== "" ||
+        sendTransactionButReportFailureChanceValidation !== "";
 
     if (
         errorChance === problems.errorChance.toString() &&
         timeoutChance === problems.timeoutChance.toString() &&
         malformedResponseChance === problems.malformedResponseChance.toString() &&
-        skipSendingRawTransactionChance === problems.skipSendingRawTransactionChance.toString()
+        skipSendingRawTransactionChance === problems.skipSendingRawTransactionChance.toString() &&
+        sendTransactionButReportFailureChance === problems.sendTransactionButReportFailureChance.toString()
     ) {
         buttonDisabled = true;
     }
@@ -211,6 +230,19 @@ const Endpoint = (props: EndpointProps) => {
                         <td>{problems.skipSendingRawTransactionChance}</td>
                         <td>
                             <div>{skipSendingRawTransactionChanceValidation}</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Send but report error chance</th>
+                        <td>
+                            <input
+                                value={sendTransactionButReportFailureChance}
+                                onChange={(e) => setSendTransactionButReportFailureChance(e.target.value)}
+                            />
+                        </td>
+                        <td>{problems.sendTransactionButReportFailureChance}</td>
+                        <td>
+                            <div>{sendTransactionButReportFailureChanceValidation}</div>
                         </td>
                     </tr>
                 </tbody>
